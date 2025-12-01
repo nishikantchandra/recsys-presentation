@@ -1,0 +1,7 @@
+{
+  "name": "Stylyst",
+  "description": "The LLM-Powered Fashion Vibe Matcher. Team: Nishi Kant Chandra, Ahmad Shah Rahmani, Weichi Zhang.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
