@@ -79,10 +79,19 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ currentInventory, o
       const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
       addLog(`CSV Headers: [${headers.join(', ')}]`);
 
+      const MAX_ITEMS = 10000; // Limit to 10k items as per project requirements
+      addLog(`⚠️ Dataset will be limited to ${MAX_ITEMS} items`);
       const items: any[] = [];
 
       for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
+
+        // Stop at 10k items
+        if (items.length >= MAX_ITEMS) {
+          addLog(`✅ Reached ${MAX_ITEMS} item limit. Stopping parse.`);
+          break;
+        }
+
         const values = parseCSVLine(lines[i]);
 
         if (values.length > 1) {

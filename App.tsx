@@ -2,18 +2,19 @@ import React, { useState, useEffect } from 'react';
 import VibeSearch from './components/VibeSearch';
 import Studio from './components/Studio';
 import InventoryManager from './components/InventoryManager';
-import ProjectPlan from './components/ProjectPlan';
+
 import EDADashboard from './components/EDA_Dashboard';
 import { Product } from './types';
 import { INVENTORY } from './constants';
 import { loadInventoryFromCache } from './services/storageService';
+import { loadInventoryFromGitHub } from './services/githubInventoryService';
 
 enum Tab {
   SEARCH = 'search',
   STUDIO = 'studio',
   EDA = 'eda',
   INVENTORY = 'inventory',
-  PLAN = 'plan'
+
 }
 
 const App: React.FC = () => {
@@ -21,18 +22,36 @@ const App: React.FC = () => {
   const [inventory, setInventory] = useState<Product[]>(INVENTORY);
   const [collection, setCollection] = useState<Product[]>([]); // User's saved collection
   const [loadingCache, setLoadingCache] = useState(true);
+  const [loadingStatus, setLoadingStatus] = useState<string>('Initializing...');
 
-  // Auto-load from Lock/Cache on startup
+  // Auto-load from Cache first, then GitHub as fallback
   useEffect(() => {
     const initData = async () => {
       try {
+        // First, try local cache
+        setLoadingStatus('Checking local cache...');
         const cached = await loadInventoryFromCache();
         if (cached && cached.length > 0) {
           console.log("Loaded inventory from cache");
           setInventory(cached);
+          setLoadingCache(false);
+          return;
+        }
+
+        // If no cache, load from GitHub
+        setLoadingStatus('Loading from GitHub...');
+        console.log("No cache found, loading from GitHub...");
+        const githubData = await loadInventoryFromGitHub();
+        if (githubData && githubData.length > 0) {
+          console.log(`Loaded ${githubData.length} items from GitHub`);
+          setInventory(githubData);
+        } else {
+          console.log("Using default inventory");
         }
       } catch (error) {
-        console.error("Failed to load inventory cache", error);
+        console.error("Failed to load inventory:", error);
+        setLoadingStatus('Using default data...');
+        // Keep using INVENTORY as fallback
       } finally {
         setLoadingCache(false);
       }
@@ -70,7 +89,7 @@ const App: React.FC = () => {
                 { id: Tab.STUDIO, label: 'Studio' },
                 { id: Tab.EDA, label: 'EDA' },
                 { id: Tab.INVENTORY, label: 'Inventory' },
-                { id: Tab.PLAN, label: 'Project Plan' },
+
               ].map((item) => (
                 <button
                   key={item.id}
@@ -126,9 +145,7 @@ const App: React.FC = () => {
         <div className={activeTab === Tab.INVENTORY ? 'block animate-fade-in-up' : 'hidden'}>
           <InventoryManager currentInventory={inventory} onUpdateInventory={setInventory} />
         </div>
-        <div className={activeTab === Tab.PLAN ? 'block animate-fade-in-up' : 'hidden'}>
-          <ProjectPlan />
-        </div>
+
       </main>
 
       <footer className="hidden md:block bg-white border-t border-pink-100 py-10 mt-auto">

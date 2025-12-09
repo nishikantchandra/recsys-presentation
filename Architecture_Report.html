@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stylyst Pro - Architecture Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            background-color: #fff;
+        }
+
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #e11d48;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #e11d48;
+            margin-top: 40px;
+            border-left: 5px solid #e11d48;
+            padding-left: 15px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f3f4f6;
+            color: #374151;
+        }
+
+        .mermaid {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+                max-width: 100%;
+            }
+
+            .section {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <script>mermaid.initialize({ startOnLoad: true });</script>
+
+    <h1>System Architecture & Method Report</h1>
+    <p><strong>Project:</strong> Stylyst Pro</p>
+    <p><strong>Date:</strong> December 2, 2025</p>
+
+    <div class="section">
+        <h2>1. High-Level Architecture</h2>
+        <p>The system operates as a <strong>Client-Side Single Page Application (SPA)</strong>. It relies on a "Thick
+            Client" architecture where the browser handles logic, retrieval, and orchestration, while the <strong>Google
+                Gemini API</strong> serves as the intelligence backend.</p>
+
+        <div class="mermaid">
+            graph TD
+            User[USER] --> Client[FRONTEND CLIENT React + Vite]
+            Client --> UI[UI Layer Tailwind CSS]
+            Client --> State[State Manager React Hooks]
+            Client --> Logic[Logic Core TypeScript]
+
+            Client --> LocalStore[LOCAL DATA STORE]
+            LocalStore --> Mock[Mock Inventory constants.ts]
+            LocalStore --> Cache[Browser Cache IndexedDB]
+
+            Client --> AI[AI SERVICE LAYER geminiService.ts]
+            AI --> T2T[Text-to-Text Gemini 2.5 Flash]
+            AI --> V2T[Vision-to-Text Gemini 2.5 Flash]
+            AI --> TTS[Text-to-Speech Gemini TTS]
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>2. Core Method: "Vibe Search" Pipeline</h2>
+        <p>This is the primary retrieval and ranking method. It uses a <strong>Hybrid Search</strong> approach:
+            deterministic keyword filtering followed by probabilistic LLM ranking.</p>
+
+        <div class="mermaid">
+            graph TD
+            Start(User Enters Query) --> Step1[STEP 1: CANDIDATE RETRIEVAL]
+            Step1 -->|Input: Query + Inventory| Process1[Tokenize & Score Items]
+            Process1 -->|Output| Candidates[Top 60 Raw Candidates]
+
+            Candidates --> Step2[STEP 2: SEMANTIC RE-RANKING]
+            Step2 -->|Input: Query + Candidates| Gemini[Gemini LLM 2.5 Flash]
+            Gemini -->|Prompt| Prompt[Role: Stylist, Task: Select Top 6]
+
+            Gemini --> Step3[STEP 3: RESPONSE GENERATION]
+            Step3 -->|Output| Verdict[Stylist Verdict & Explanations]
+
+            Verdict --> Step4[STEP 4: PRESENTATION]
+            Step4 --> UI_Render[UI Render Results]
+            Step4 --> TTS_Audio[Text-to-Speech Audio]
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>3. Core Method: "Studio" (Visual Analysis)</h2>
+        <p>This method utilizes <strong>Multimodal AI</strong> to analyze uploaded images for style extraction.</p>
+
+        <div class="mermaid">
+            graph TD
+            UserUpload(User Uploads Image) --> Step1[STEP 1: PRE-PROCESSING]
+            Step1 --> Base64[Convert to Base64]
+
+            Base64 --> Step2[STEP 2: VISION ANALYSIS]
+            Step2 --> GeminiVision[Gemini Multimodal]
+            GeminiVision -->|Prompt| VoguePrompt[Vogue Editor System Prompt]
+
+            GeminiVision --> Step3[STEP 3: DATA PARSING]
+            Step3 --> JSON[JSON Response]
+            JSON --> Vibe[Main Vibe]
+            JSON --> Items[Fashion Items]
+            JSON --> Coords[Screen Coordinates]
+
+            Coords --> End[Display Interactive Overlay]
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>4. Technology Stack Summary</h2>
+        <table>
+            <tr>
+                <th>Component</th>
+                <th>Technology Used</th>
+                <th>Purpose</th>
+            </tr>
+            <tr>
+                <td><strong>Framework</strong></td>
+                <td>React 19 + Vite</td>
+                <td>Core application runtime</td>
+            </tr>
+            <tr>
+                <td><strong>Language</strong></td>
+                <td>TypeScript</td>
+                <td>Type-safe logic and data structures</td>
+            </tr>
+            <tr>
+                <td><strong>Styling</strong></td>
+                <td>Tailwind CSS</td>
+                <td>Responsive, glassmorphism UI design</td>
+            </tr>
+            <tr>
+                <td><strong>Intelligence</strong></td>
+                <td>Google Gemini 2.5 Flash</td>
+                <td>Reasoning, Ranking, Vision, and TTS</td>
+            </tr>
+            <tr>
+                <td><strong>Data</strong></td>
+                <td>In-Memory / LocalStorage</td>
+                <td>Simulating a database for the prototype</td>
+            </tr>
+        </table>
+    </div>
+
+</body>
+
+</html>
