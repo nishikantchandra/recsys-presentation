@@ -5,10 +5,13 @@ import { STYLYST_SYSTEM_PROMPT } from "../constants";
 // Storage key for API key in localStorage
 const API_KEY_STORAGE_KEY = 'stylyst_gemini_api_key';
 
+// Hardcoded key for demo (can be regenerated after presentation)
+const DEMO_API_KEY = 'AIzaSyAjz01mWjhQu5uCg3ft41ZSc5867tXFZg8';
+
 const getAiClient = () => {
-  // Priority: 1. localStorage (user-entered), 2. Environment variable
+  // Priority: 1. localStorage (user-entered), 2. Environment variable, 3. Demo key
   const storedKey = typeof window !== 'undefined' ? localStorage.getItem(API_KEY_STORAGE_KEY) : null;
-  const apiKey = storedKey || import.meta.env.VITE_GEMINI_API_KEY;
+  const apiKey = storedKey || import.meta.env.VITE_GEMINI_API_KEY || DEMO_API_KEY;
 
   if (!apiKey) {
     console.error("CRITICAL: Gemini API Key is missing.");
@@ -319,37 +322,48 @@ export const analyzeFashionImage = async (imageFile: File, promptText: string) =
 };
 
 /**
- * Feature 3: Image Editing
+ * Feature 3: Image Editing (Try-On)
+ * Using gemini-2.0-flash with native image generation
  */
 export const editFashionImage = async (imageFile: File, editPrompt: string): Promise<string> => {
   const ai = getAiClient();
   const base64Data = await fileToGenerativePart(imageFile);
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
-    contents: {
-      parts: [
-        {
-          inlineData: {
-            data: base64Data,
-            mimeType: imageFile.type,
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash-exp',
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: imageFile.type,
+            },
           },
-        },
-        {
-          text: editPrompt,
-        },
-      ],
-    },
-    config: {
-      responseModalities: [Modality.IMAGE],
-    },
-  });
+          {
+            text: `You are a fashion styling AI. Edit this outfit image based on the following instruction: ${editPrompt}. Make the changes look natural and realistic.`,
+          },
+        ],
+      },
+      config: {
+        responseModalities: [Modality.TEXT, Modality.IMAGE],
+      },
+    });
 
-  const part = response.candidates?.[0]?.content?.parts?.[0];
-  if (part && part.inlineData) {
-    return `data:image/png;base64,${part.inlineData.data}`;
+    // Check for image in response
+    const parts = response.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData?.data) {
+        return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+      }
+    }
+
+    // If no image, return a styled response message
+    throw new Error("The model couldn't generate an edited image. Try a different prompt.");
+  } catch (error: any) {
+    console.error("Try-On Error:", error);
+    throw new Error(error.message || "Image editing failed. Please try again.");
   }
-  throw new Error("No image generated.");
 };
 
 /**
