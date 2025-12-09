@@ -3,10 +3,12 @@ import { Product, RecommendationResponse } from "../types";
 import { STYLYST_SYSTEM_PROMPT } from "../constants";
 
 const getAiClient = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (window as any).process?.env?.API_KEY; // Fallback for some setups
+  // Use the standard Vite env var (injected via define in vite.config.ts)
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
   if (!apiKey) {
-    console.error("CRITICAL: Gemini API Key is missing.");
+    console.error("CRITICAL: Gemini API Key is missing. Please check your .env.local file or GitHub Secrets.");
+    alert("API Key is missing! The app will not function correctly.");
     throw new Error("MISSING_API_KEY");
   }
   return new GoogleGenAI({ apiKey });
@@ -30,17 +32,19 @@ export const fileToGenerativePart = async (file: File): Promise<string> => {
 /**
  * STAGE 1: ACCURATE RETRIEVAL (Client-Side Implementation)
  * 
- * Solves the "Jersey Problem" by implementing Weighted Category Matching.
- * If a token in the query matches the Item Category, it gets a massive score boost.
+ * Enhanced retrieval with better tokenization and fuzzy matching.
+ * Implements weighted scoring for category, name, and description matches.
  */
 const retrieveCandidates = (query: string, inventory: Product[], limit: number = 30): Product[] => {
   // 1. Clean and Tokenize Query
   const cleanQuery = query.toLowerCase().replace(/[^\w\s]/g, '');
-  const tokens = cleanQuery.split(/\s+/).filter(t => t.length > 2);
+  const tokens = cleanQuery.split(/\s+/).filter(t => t.length > 1); // Lowered from 2 to 1 for better matching
 
   if (inventory.length === 0) return [];
 
-  // 2. Score Every Item
+  console.log(`🔍 Search Query: "${query}" | Tokens: [${tokens.join(', ')}] | Inventory Size: ${inventory.length}`);
+
+  // 2. Score Every Item with Enhanced Logic
   const scoredItems = inventory.map(item => {
     let score = 0;
     let matchedTokens = 0;
@@ -48,28 +52,44 @@ const retrieveCandidates = (query: string, inventory: Product[], limit: number =
     // Normalize text fields
     const name = (item.name || '').toLowerCase();
     const desc = (item.description || '').toLowerCase();
-    const cat = (item.category || '').toLowerCase(); // Now contains articleType e.g. "Casual Shoes"
+    const cat = (item.category || '').toLowerCase();
 
-    // A. Exact Phrase Match (Highest Priority)
-    if (name.includes(cleanQuery)) score += 100;
+    // A. Exact Full Query Match (Highest Priority)
+    if (name.includes(cleanQuery)) score += 200;
+    if (cat.includes(cleanQuery)) score += 150;
+    if (desc.includes(cleanQuery)) score += 100;
 
-    // B. Token Matching with Category Bias
+    // B. Token Matching with Enhanced Category Bias
     tokens.forEach(token => {
       let tokenMatched = false;
 
-      // CRITICAL: If token matches CATEGORY (e.g. "Shoes"), massive boost
+      // CRITICAL: Category Match (e.g., "shoes", "shirt", "dress")
       if (cat.includes(token)) {
-        score += 50; // High priority for Item Type matches
+        score += 80; // Increased from 50 for better category matching
+        tokenMatched = true;
+      }
+
+      // Exact word boundary match in category (e.g., "casual" in "Casual Shoes")
+      const catWords = cat.split(/\s+/);
+      if (catWords.some(word => word === token || word.startsWith(token))) {
+        score += 40;
         tokenMatched = true;
       }
 
       // Name match
       if (name.includes(token)) {
-        score += 15;
+        score += 20; // Increased from 15
         tokenMatched = true;
       }
 
-      // Description match (Lower priority, descriptions can be wordy)
+      // Exact word match in name
+      const nameWords = name.split(/\s+/);
+      if (nameWords.some(word => word === token || word.startsWith(token))) {
+        score += 10;
+        tokenMatched = true;
+      }
+
+      // Description match (Lower priority)
       if (desc.includes(token)) {
         score += 5;
         tokenMatched = true;
@@ -78,26 +98,47 @@ const retrieveCandidates = (query: string, inventory: Product[], limit: number =
       if (tokenMatched) matchedTokens++;
     });
 
-    // C. Penalty for Missing Images
+    // C. Boost if ALL tokens matched (relevance boost)
+    if (tokens.length > 0 && matchedTokens === tokens.length) {
+      score += 50;
+    }
+
+    // D. Penalty for Missing Images
     if (item.image.includes('placehold.co') || item.image.includes('Missing')) {
       score -= 1000; // Buries missing items completely
     }
 
-    return { item, score };
+    return { item, score, matchedTokens };
   });
 
   // 3. Filter & Sort
-  // We require at least one matching token score to be considered
+  // Require at least one matching token OR a minimum score
   let candidates = scoredItems
     .filter(i => i.score > 0)
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => {
+      // First sort by score
+      if (b.score !== a.score) return b.score - a.score;
+      // Then by number of matched tokens
+      return b.matchedTokens - a.matchedTokens;
+    })
     .map(i => i.item);
 
-  // 4. "Zero-Results" Handling - Fallback to random popular items if search fails
+  console.log(`✅ Found ${candidates.length} candidates. Top 5 scores:`,
+    scoredItems.filter(i => i.score > 0).slice(0, 5).map(i => ({
+      name: i.item.name,
+      category: i.item.category,
+      score: i.score,
+      matched: i.matchedTokens
+    }))
+  );
+
+  // 4. "Zero-Results" Handling
   if (candidates.length === 0) {
-    console.warn("No candidates found via keyword search. Falling back to random selection for demo.");
-    // Shuffle inventory and pick random items so the user always sees SOMETHING
-    candidates = [...inventory].sort(() => 0.5 - Math.random()).slice(0, 20);
+    console.warn("⚠️ No candidates found via keyword search. Falling back to random selection.");
+    candidates = [...inventory]
+      .filter(i => !i.image.includes('placehold.co') && !i.image.includes('Missing'))
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 20);
   }
 
   return candidates.slice(0, limit);
