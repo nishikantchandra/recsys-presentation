@@ -1,7 +1,7 @@
 import { Product } from '../types';
 
 // GitHub raw content URL for the repository
-const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/arahmani25/Style-Vibe/main';
+const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/nishikantchandra/recsys-check2/main';
 const GITHUB_IMAGES_BASE = `${GITHUB_RAW_BASE}/images`;
 const GITHUB_CSV_URL = `${GITHUB_RAW_BASE}/style.csv`;
 

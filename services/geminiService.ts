@@ -6,7 +6,7 @@ import { STYLYST_SYSTEM_PROMPT } from "../constants";
 const API_KEY_STORAGE_KEY = 'stylyst_gemini_api_key';
 
 // Hardcoded key for demo (can be regenerated after presentation)
-const DEMO_API_KEY = 'AIzaSyAjz01mWjhQu5uCg3ft41ZSc5867tXFZg8';
+const DEMO_API_KEY = 'AIzaSyAmbWR_WsH5HpZmmgVPmpfCJL9jRFXX-nw';
 
 const getAiClient = () => {
   // Priority: 1. localStorage (user-entered), 2. Environment variable, 3. Demo key

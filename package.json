@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://arahmani25.github.io/Style-Vibe",
+  "homepage": "https://nishikantchandra.github.io/recsys-check2",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
