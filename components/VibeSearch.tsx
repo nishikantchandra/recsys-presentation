@@ -273,7 +273,7 @@ const VibeSearch: React.FC<VibeSearchProps> = ({ inventory, onAddToCollection })
                   <div className="p-6 flex flex-col flex-grow">
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-serif font-bold text-xl text-chic-dark leading-tight">{product.name}</h4>
-                      <span className="text-sm font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded">{product.price}</span>
+                      {/* Price removed as per user request */}
                     </div>
 
                     <div className="mt-auto pt-4">
