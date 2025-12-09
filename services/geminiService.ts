@@ -2,13 +2,16 @@ import { GoogleGenAI, Type, Modality, FunctionDeclaration } from "@google/genai"
 import { Product, RecommendationResponse } from "../types";
 import { STYLYST_SYSTEM_PROMPT } from "../constants";
 
+// Storage key for API key in localStorage
+const API_KEY_STORAGE_KEY = 'stylyst_gemini_api_key';
+
 const getAiClient = () => {
-  // Use the standard Vite env var (injected via define in vite.config.ts)
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  // Priority: 1. localStorage (user-entered), 2. Environment variable
+  const storedKey = typeof window !== 'undefined' ? localStorage.getItem(API_KEY_STORAGE_KEY) : null;
+  const apiKey = storedKey || import.meta.env.VITE_GEMINI_API_KEY;
 
   if (!apiKey) {
-    console.error("CRITICAL: Gemini API Key is missing. Please check your .env.local file or GitHub Secrets.");
-    alert("API Key is missing! The app will not function correctly.");
+    console.error("CRITICAL: Gemini API Key is missing.");
     throw new Error("MISSING_API_KEY");
   }
   return new GoogleGenAI({ apiKey });

@@ -4,6 +4,7 @@ import Studio from './components/Studio';
 import InventoryManager from './components/InventoryManager';
 
 import EDADashboard from './components/EDA_Dashboard';
+import ApiKeyModal, { getStoredApiKey } from './components/ApiKeyModal';
 import { Product } from './types';
 import { INVENTORY } from './constants';
 import { loadInventoryFromCache } from './services/storageService';
@@ -23,6 +24,22 @@ const App: React.FC = () => {
   const [collection, setCollection] = useState<Product[]>([]); // User's saved collection
   const [loadingCache, setLoadingCache] = useState(true);
   const [loadingStatus, setLoadingStatus] = useState<string>('Initializing...');
+
+  // API Key Modal State
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(false);
+
+  // Check if API key exists on load
+  useEffect(() => {
+    const key = getStoredApiKey();
+    setHasApiKey(!!key);
+
+    // Auto-show modal if no key is set
+    if (!key && !import.meta.env.VITE_GEMINI_API_KEY) {
+      // Delay slightly so user sees the app first
+      setTimeout(() => setShowApiKeyModal(true), 1000);
+    }
+  }, []);
 
   // Auto-load from Cache first, then GitHub as fallback
   useEffect(() => {
@@ -66,8 +83,21 @@ const App: React.FC = () => {
     }
   };
 
+  const handleApiKeySave = (key: string) => {
+    setHasApiKey(true);
+    // Force page reload to reinitialize the AI client with new key
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-chic-blush to-white transition-colors duration-500">
+      {/* API Key Modal */}
+      <ApiKeyModal
+        isOpen={showApiKeyModal}
+        onClose={() => setShowApiKeyModal(false)}
+        onSave={handleApiKeySave}
+      />
+
       {/* Sticky Header - Chic & Minimal */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-pink-100 shadow-sm transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -83,7 +113,7 @@ const App: React.FC = () => {
             </div>
 
             {/* Desktop Nav */}
-            <nav className="hidden md:flex space-x-1">
+            <nav className="hidden md:flex space-x-1 items-center">
               {[
                 { id: Tab.SEARCH, label: 'Discover' },
                 { id: Tab.STUDIO, label: 'Studio' },
@@ -102,6 +132,15 @@ const App: React.FC = () => {
                   {item.label}
                 </button>
               ))}
+
+              {/* Settings Button */}
+              <button
+                onClick={() => setShowApiKeyModal(true)}
+                className={`ml-4 p-2 rounded-full transition-all ${hasApiKey ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600 animate-pulse'}`}
+                title={hasApiKey ? 'API Key Configured' : 'Configure API Key'}
+              >
+                ⚙️
+              </button>
             </nav>
           </div>
         </div>
@@ -123,13 +162,22 @@ const App: React.FC = () => {
               <span className="text-[10px] uppercase font-bold tracking-wider">{item.label}</span>
             </button>
           ))}
+          {/* Mobile Settings */}
+          <button
+            onClick={() => setShowApiKeyModal(true)}
+            className={`flex flex-col items-center p-2 rounded-xl transition-colors ${hasApiKey ? 'text-green-600' : 'text-yellow-600 animate-pulse'}`}
+          >
+            <span className="text-xl mb-1">⚙️</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider">API</span>
+          </button>
         </div>
       </header>
 
       <main className="flex-grow pb-24 md:pb-12 pt-6 px-4">
         {loadingCache && (
-          <div className="flex justify-center py-4">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-chic-rose"></div>
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-chic-rose mb-3"></div>
+            <p className="text-sm text-gray-500">{loadingStatus}</p>
           </div>
         )}
 
