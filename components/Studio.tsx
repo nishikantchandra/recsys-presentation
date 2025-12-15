@@ -1,24 +1,18 @@
 import React, { useState } from 'react';
 import { Product } from '../types';
-import { analyzeImageWithAnnotations, getFashionTrends, virtualTryOn, AnnotatedAnalysis } from '../services/geminiService';
+import { analyzeImageWithAnnotations, getFashionTrends, AnnotatedAnalysis } from '../services/geminiService';
 
 interface StudioProps {
     collection: Product[];
 }
 
 const Studio: React.FC<StudioProps> = ({ collection }) => {
-    const [activeTab, setActiveTab] = useState<'analyze' | 'tryon' | 'trends' | 'collection'>('analyze');
+    const [activeTab, setActiveTab] = useState<'analyze' | 'trends' | 'collection'>('analyze');
 
     // --- ANALYZE STATE ---
     const [analyzeFile, setAnalyzeFile] = useState<File | null>(null);
     const [analysis, setAnalysis] = useState<AnnotatedAnalysis | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-    // --- TRY-ON STATE ---
-    const [tryOnPhoto, setTryOnPhoto] = useState<File | null>(null);
-    const [selectedItem, setSelectedItem] = useState<Product | null>(null);
-    const [tryOnResult, setTryOnResult] = useState<string | null>(null);
-    const [isTryingOn, setIsTryingOn] = useState(false);
 
     // --- TRENDS STATE ---
     const [trendQuery, setTrendQuery] = useState('');
@@ -37,27 +31,6 @@ const Studio: React.FC<StudioProps> = ({ collection }) => {
             alert("Analysis failed. The AI service may be temporarily unavailable.");
         } finally {
             setIsAnalyzing(false);
-        }
-    };
-
-    // --- TRY-ON LOGIC ---
-    const handleTryOn = async () => {
-        if (!tryOnPhoto || !selectedItem) return;
-        setIsTryingOn(true);
-        setTryOnResult(null);
-        try {
-            const result = await virtualTryOn(
-                tryOnPhoto,
-                selectedItem.image,
-                selectedItem.name,
-                selectedItem.category || 'clothing'
-            );
-            setTryOnResult(result);
-        } catch (e: any) {
-            console.error(e);
-            alert(e.message || "Virtual try-on failed. Please try again.");
-        } finally {
-            setIsTryingOn(false);
         }
     };
 
@@ -82,21 +55,20 @@ const Studio: React.FC<StudioProps> = ({ collection }) => {
             {/* Studio Header */}
             <div className="text-center mb-8">
                 <h2 className="text-5xl font-serif font-bold text-chic-dark">The Studio</h2>
-                <p className="text-gray-500 mt-2">Analyze outfits, try on clothes, and discover trends with AI.</p>
+                <p className="text-gray-500 mt-2">Analyze outfits and discover trends with AI.</p>
             </div>
 
             {/* Tabs */}
-            <div className="flex justify-center mb-8 space-x-2 flex-wrap gap-2">
+            <div className="flex justify-center mb-8 space-x-4">
                 {[
                     { id: 'analyze', label: 'Style Scanner', icon: '📸' },
-                    { id: 'tryon', label: 'Virtual Try-On', icon: '👗' },
                     { id: 'trends', label: 'Trend Radar', icon: '🌍' },
                     { id: 'collection', label: 'My Collection', icon: '💼' },
                 ].map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`px-5 py-3 rounded-full font-bold transition-all duration-300 flex items-center ${activeTab === tab.id
+                        className={`px-6 py-3 rounded-full font-bold transition-all duration-300 flex items-center ${activeTab === tab.id
                             ? 'bg-chic-rose text-white shadow-lg scale-105'
                             : 'bg-white text-gray-500 hover:bg-pink-50'
                             }`}
@@ -106,9 +78,6 @@ const Studio: React.FC<StudioProps> = ({ collection }) => {
                             <span className="ml-2 bg-white text-chic-rose text-xs font-bold px-2 py-0.5 rounded-full">
                                 {collection.length}
                             </span>
-                        )}
-                        {tab.id === 'tryon' && (
-                            <span className="ml-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] px-2 py-0.5 rounded font-bold">NANO BANANA</span>
                         )}
                     </button>
                 ))}
@@ -187,165 +156,6 @@ const Studio: React.FC<StudioProps> = ({ collection }) => {
                             </div>
                         )}
                     </div>
-                </div>
-            )}
-
-            {/* --- VIRTUAL TRY-ON TAB --- */}
-            {activeTab === 'tryon' && (
-                <div className="animate-fade-in-up">
-                    <div className="grid lg:grid-cols-2 gap-8 mb-8">
-                        {/* Left: Upload Your Photo */}
-                        <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100">
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="font-bold text-gray-700 uppercase tracking-widest text-sm">Your Photo</h3>
-                                <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] px-2 py-1 rounded font-bold">NANO BANANA</span>
-                            </div>
-
-                            <div className="border-2 border-dashed border-pink-200 rounded-2xl min-h-[350px] flex flex-col items-center justify-center bg-pink-50/30 cursor-pointer hover:bg-pink-50 transition overflow-hidden relative">
-                                {tryOnPhoto ? (
-                                    <>
-                                        <img src={URL.createObjectURL(tryOnPhoto)} alt="Your photo" className="max-h-[320px] object-contain" />
-                                        <button
-                                            onClick={() => { setTryOnPhoto(null); setTryOnResult(null); }}
-                                            className="absolute top-3 right-3 bg-white/80 p-2 rounded-full hover:bg-white text-gray-500 hover:text-red-500 transition shadow"
-                                        >
-                                            ✕
-                                        </button>
-                                    </>
-                                ) : (
-                                    <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer p-8">
-                                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm text-chic-rose">
-                                            <span className="text-3xl">📷</span>
-                                        </div>
-                                        <span className="font-serif text-lg text-gray-600 block mb-1">Upload Your Photo</span>
-                                        <span className="text-xs text-gray-400">A full-body or upper-body photo works best</span>
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            className="hidden"
-                                            onChange={(e) => {
-                                                setTryOnPhoto(e.target.files?.[0] || null);
-                                                setTryOnResult(null);
-                                            }}
-                                        />
-                                    </label>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Right: Select Item from Collection */}
-                        <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100">
-                            <h3 className="font-bold text-gray-700 uppercase tracking-widest text-sm mb-4">Select Item to Try On</h3>
-
-                            {collection.length === 0 ? (
-                                <div className="border-2 border-dashed border-gray-200 rounded-2xl min-h-[350px] flex flex-col items-center justify-center text-center p-8">
-                                    <span className="text-5xl mb-4">💼</span>
-                                    <h4 className="font-bold text-gray-600 mb-2">Collection Empty</h4>
-                                    <p className="text-sm text-gray-400">
-                                        Go to <strong>Discover</strong> tab and add items to your collection first!
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-[350px] overflow-y-auto p-2">
-                                    {collection.map(item => (
-                                        <div
-                                            key={item.id}
-                                            onClick={() => { setSelectedItem(item); setTryOnResult(null); }}
-                                            className={`cursor-pointer rounded-xl overflow-hidden border-2 transition-all duration-300 ${selectedItem?.id === item.id
-                                                    ? 'border-chic-rose ring-2 ring-pink-200 scale-105'
-                                                    : 'border-gray-100 hover:border-pink-200'
-                                                }`}
-                                        >
-                                            <div className="aspect-square overflow-hidden bg-gray-100">
-                                                <img
-                                                    src={item.image}
-                                                    alt={item.name}
-                                                    className="w-full h-full object-cover"
-                                                    onError={(e) => {
-                                                        (e.target as HTMLImageElement).src = 'https://placehold.co/150x150?text=No+Image';
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="p-2 bg-white">
-                                                <p className="text-xs font-medium text-gray-700 truncate">{item.name}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {selectedItem && (
-                                <div className="mt-4 p-3 bg-pink-50 rounded-xl border border-pink-100">
-                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Selected</p>
-                                    <p className="font-bold text-chic-dark">{selectedItem.name}</p>
-                                    <p className="text-xs text-gray-400">{selectedItem.category}</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Try It On Button */}
-                    <div className="text-center mb-8">
-                        <button
-                            onClick={handleTryOn}
-                            disabled={!tryOnPhoto || !selectedItem || isTryingOn}
-                            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-12 py-4 rounded-full font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                        >
-                            {isTryingOn ? (
-                                <span className="flex items-center">
-                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div>
-                                    Generating Try-On...
-                                </span>
-                            ) : (
-                                <span className="flex items-center">
-                                    <span className="mr-2">🎨</span> Try It On!
-                                </span>
-                            )}
-                        </button>
-                        {(!tryOnPhoto || !selectedItem) && (
-                            <p className="text-gray-400 text-sm mt-3">
-                                {!tryOnPhoto && !selectedItem && "Upload your photo and select an item to try on"}
-                                {!tryOnPhoto && selectedItem && "Upload your photo first"}
-                                {tryOnPhoto && !selectedItem && "Select an item from your collection"}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Result Section */}
-                    {(isTryingOn || tryOnResult) && (
-                        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
-                            <h3 className="font-bold text-gray-700 uppercase tracking-widest text-sm mb-6 text-center">AI Generated Result</h3>
-
-                            <div className="flex justify-center">
-                                {isTryingOn ? (
-                                    <div className="min-h-[400px] flex flex-col items-center justify-center">
-                                        <div className="w-20 h-20 border-4 border-pink-200 border-t-chic-rose rounded-full animate-spin mb-6"></div>
-                                        <p className="font-serif text-xl text-chic-dark animate-pulse">Creating your virtual try-on...</p>
-                                        <p className="text-gray-400 text-sm mt-2">This may take a few seconds</p>
-                                    </div>
-                                ) : tryOnResult ? (
-                                    <div className="flex flex-col items-center">
-                                        <img
-                                            src={tryOnResult}
-                                            alt="Virtual Try-On Result"
-                                            className="max-h-[500px] rounded-2xl shadow-lg"
-                                        />
-                                        <button
-                                            onClick={() => {
-                                                const link = document.createElement('a');
-                                                link.href = tryOnResult;
-                                                link.download = 'stylyst-tryon.png';
-                                                link.click();
-                                            }}
-                                            className="mt-6 px-8 py-3 bg-chic-dark text-white rounded-xl font-medium hover:bg-chic-rose transition flex items-center"
-                                        >
-                                            <span className="mr-2">💾</span> Download Image
-                                        </button>
-                                    </div>
-                                ) : null}
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
 
@@ -451,4 +261,3 @@ const Studio: React.FC<StudioProps> = ({ collection }) => {
 };
 
 export default Studio;
-

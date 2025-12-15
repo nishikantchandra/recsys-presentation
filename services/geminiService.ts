@@ -204,7 +204,7 @@ export const getStylistRecommendations = async (
   try {
     // --- STAGE 2 & 3: RANKING & GENERATION ---
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.5-flash-lite',
       contents: prompt,
       config: {
         systemInstruction: STYLYST_SYSTEM_PROMPT,
@@ -394,7 +394,7 @@ export const analyzeImageWithAnnotations = async (imageFile: File): Promise<Anno
   `;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-2.5-flash-lite',
     contents: {
       parts: [
         { inlineData: { mimeType: imageFile.type, data: base64Data } },
@@ -436,7 +436,7 @@ export const analyzeFashionImage = async (imageFile: File, promptText: string) =
   const base64Data = await fileToGenerativePart(imageFile);
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-2.5-flash-lite',
     contents: {
       parts: [
         { inlineData: { mimeType: imageFile.type, data: base64Data } },
@@ -458,7 +458,7 @@ export const editFashionImage = async (imageFile: File, editPrompt: string): Pro
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.5-flash-lite',
       contents: {
         parts: [
           {
@@ -546,7 +546,7 @@ Generate the virtual try-on image now.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.5-flash-lite',
       contents: {
         parts: [
           {
@@ -593,7 +593,7 @@ export const getFashionTrends = async (query: string) => {
   const ai = getAiClient();
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-2.5-flash-lite',
     contents: `Answer this fashion query using the latest data: ${query}`,
     config: {
       tools: [{ googleSearch: {} }],

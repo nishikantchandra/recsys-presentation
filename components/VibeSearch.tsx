@@ -184,21 +184,12 @@ const VibeSearch: React.FC<VibeSearchProps> = ({ inventory, onAddToCollection })
               Stop
             </button>
           ) : (
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="bg-chic-rose text-white px-6 py-3 rounded-full font-bold tracking-wide hover:bg-pink-700 transition-all duration-300 shadow-md transform hover:scale-105 active:scale-95"
-              >
-                Style Me
-              </button>
-              <button
-                type="button"
-                onClick={handleAISearch}
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-full font-bold tracking-wide hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-md transform hover:scale-105 active:scale-95 flex items-center gap-2"
-              >
-                <span>✨</span> AI Search
-              </button>
-            </div>
+            <button
+              type="submit"
+              className="bg-chic-rose text-white px-8 py-3 rounded-full font-bold tracking-wide hover:bg-pink-700 transition-all duration-300 shadow-md transform hover:scale-105 active:scale-95"
+            >
+              Style Me
+            </button>
           )}
         </div>
       </form>
