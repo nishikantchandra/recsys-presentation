@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { getStylistRecommendations, generateStylistSpeech } from '../services/geminiService';
+import { getStylistRecommendations, generateStylistSpeech, getAIRecommendations } from '../services/geminiService';
 import { RecommendationResponse, Product } from '../types';
 
 interface VibeSearchProps {
@@ -85,6 +85,45 @@ const VibeSearch: React.FC<VibeSearchProps> = ({ inventory, onAddToCollection })
     setPipelineStage(0);
   };
 
+  // AI-powered search using OpenRouter
+  const handleAISearch = async () => {
+    if (!query.trim()) return;
+
+    const currentSearchId = Date.now();
+    searchIdRef.current = currentSearchId;
+    setLoading(true);
+    setResult(null);
+    setPipelineStage(1);
+
+    try {
+      // Animation sequence
+      await new Promise(r => setTimeout(r, 1000));
+      if (searchIdRef.current !== currentSearchId) return;
+      setPipelineStage(2);
+
+      await new Promise(r => setTimeout(r, 1000));
+      if (searchIdRef.current !== currentSearchId) return;
+      setPipelineStage(3);
+
+      // Call AI API
+      const data = await getAIRecommendations(query, inventory);
+
+      setPipelineStage(4);
+      if (searchIdRef.current === currentSearchId) {
+        setResult(data);
+        setLoading(false);
+        setPipelineStage(0);
+      }
+    } catch (error: any) {
+      console.error(error);
+      if (searchIdRef.current === currentSearchId) {
+        setLoading(false);
+        setPipelineStage(0);
+        alert("AI Search failed. Please try again.");
+      }
+    }
+  };
+
   const playSummary = async () => {
     if (!result || isPlaying) return;
     setIsPlaying(true);
@@ -145,12 +184,21 @@ const VibeSearch: React.FC<VibeSearchProps> = ({ inventory, onAddToCollection })
               Stop
             </button>
           ) : (
-            <button
-              type="submit"
-              className="bg-chic-rose text-white px-8 py-3 rounded-full font-bold tracking-wide hover:bg-pink-700 transition-all duration-300 shadow-md transform hover:scale-105 active:scale-95"
-            >
-              Style Me
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="bg-chic-rose text-white px-6 py-3 rounded-full font-bold tracking-wide hover:bg-pink-700 transition-all duration-300 shadow-md transform hover:scale-105 active:scale-95"
+              >
+                Style Me
+              </button>
+              <button
+                type="button"
+                onClick={handleAISearch}
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-full font-bold tracking-wide hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 shadow-md transform hover:scale-105 active:scale-95 flex items-center gap-2"
+              >
+                <span>✨</span> AI Search
+              </button>
+            </div>
           )}
         </div>
       </form>

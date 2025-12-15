@@ -5,18 +5,26 @@ import { STYLYST_SYSTEM_PROMPT } from "../constants";
 // Storage key for API key in localStorage
 const API_KEY_STORAGE_KEY = 'stylyst_gemini_api_key';
 
-// Hardcoded key for demo (can be regenerated after presentation)
-const DEMO_API_KEY = 'AIzaSyAmbWR_WsH5HpZmmgVPmpfCJL9jRFXX-nw';
-
-const getAiClient = () => {
-  // Priority: 1. localStorage (user-entered), 2. Environment variable, 3. Demo key
+// Get Gemini API key from environment variables or localStorage
+const getGeminiApiKey = (): string => {
+  // Priority: 1. localStorage (user-entered), 2. Environment variable
   const storedKey = typeof window !== 'undefined' ? localStorage.getItem(API_KEY_STORAGE_KEY) : null;
-  const apiKey = storedKey || import.meta.env.VITE_GEMINI_API_KEY || DEMO_API_KEY;
+  const apiKey = storedKey || import.meta.env.VITE_GEMINI_API_KEY;
 
   if (!apiKey) {
-    console.error("CRITICAL: Gemini API Key is missing.");
+    console.error("CRITICAL: Gemini API Key is missing. Set VITE_GEMINI_API_KEY in Vercel.");
     throw new Error("MISSING_API_KEY");
   }
+  return apiKey;
+};
+
+// Get OpenRouter API key from environment variables
+const getOpenRouterApiKey = (): string => {
+  return import.meta.env.VITE_OPENROUTER_API_KEY || '';
+};
+
+const getAiClient = () => {
+  const apiKey = getGeminiApiKey();
   return new GoogleGenAI({ apiKey });
 };
 
@@ -228,9 +236,128 @@ export const getStylistRecommendations = async (
       return JSON.parse(response.text) as RecommendationResponse;
     }
     throw new Error("Empty response from Stylist");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API Error:", error);
-    throw new Error("The stylist encountered an internal error. Please try a simpler query or refresh.");
+
+    // FALLBACK MODE: When API fails, use keyword-based recommendations
+    console.log("🔄 Switching to fallback mode (keyword-based search)...");
+
+    // Use top 6 candidates from retrieval as recommendations
+    const fallbackItems = candidateItems.slice(0, 6);
+
+    if (fallbackItems.length === 0) {
+      return {
+        user_query: query,
+        stylist_summary: `Unable to connect to the AI stylist. Please try again later or check your network connection.`,
+        recommendations: []
+      };
+    }
+
+    // Generate fallback response
+    return {
+      user_query: query,
+      stylist_summary: `[Offline Mode] Based on your search for "${query}", here are the top matching items from the inventory. AI recommendations are temporarily unavailable.`,
+      recommendations: fallbackItems.map((item, index) => ({
+        rank: index + 1,
+        item_id: item.id,
+        description: item.description || item.name,
+        explanation: `This ${item.category || 'item'} matches your search for "${query}".`
+      }))
+    };
+  }
+};
+
+/**
+ * AI-POWERED SEARCH using OpenRouter API
+ * This provides more accurate results using external LLM
+ */
+export const getAIRecommendations = async (
+  query: string,
+  inventory: Product[]
+): Promise<RecommendationResponse> => {
+  // Stage 1: Retrieve candidates using keyword matching
+  const candidateItems = retrieveCandidates(query, inventory, 60);
+
+  if (candidateItems.length === 0) {
+    return {
+      user_query: query,
+      stylist_summary: `No items found for "${query}". Please try different keywords.`,
+      recommendations: []
+    };
+  }
+
+  // Prepare inventory context for AI
+  const inventoryContext = candidateItems.slice(0, 30).map(item =>
+    `ID: ${item.id} | Name: ${item.name} | Category: ${item.category} | Desc: ${item.description}`
+  ).join("\n");
+
+  const prompt = `You are a fashion stylist. Based on the user query, select EXACTLY 6 items from the inventory list below that best match.
+
+User Query: "${query}"
+
+Available Items:
+${inventoryContext}
+
+Return a JSON object with this exact structure:
+{
+  "user_query": "${query}",
+  "stylist_summary": "A brief 1-2 sentence stylist recommendation summary",
+  "recommendations": [
+    {"rank": 1, "item_id": "actual_id_from_list", "description": "item desc", "explanation": "why it matches"},
+    ... (exactly 6 items)
+  ]
+}
+
+Important: 
+- Only use IDs from the provided list
+- Select items that best match the query context
+- Be creative with explanations`;
+
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getOpenRouterApiKey()}`,
+        'HTTP-Referer': window.location.origin,
+        'X-Title': 'Style Vibe'
+      },
+      body: JSON.stringify({
+        model: 'meta-llama/llama-3.2-3b-instruct:free',
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        response_format: { type: 'json_object' }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+
+    if (content) {
+      const parsed = JSON.parse(content);
+      return parsed as RecommendationResponse;
+    }
+    throw new Error("Empty response from AI");
+  } catch (error: any) {
+    console.error("OpenRouter API Error:", error);
+
+    // Fallback to keyword-based results
+    const fallbackItems = candidateItems.slice(0, 6);
+    return {
+      user_query: query,
+      stylist_summary: `[AI Unavailable] Here are keyword-matched results for "${query}".`,
+      recommendations: fallbackItems.map((item, index) => ({
+        rank: index + 1,
+        item_id: item.id,
+        description: item.description || item.name,
+        explanation: `Matches your search for "${query}".`
+      }))
+    };
   }
 };
 
