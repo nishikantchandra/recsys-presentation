@@ -494,6 +494,99 @@ export const editFashionImage = async (imageFile: File, editPrompt: string): Pro
 };
 
 /**
+ * Feature 3b: Virtual Try-On (Nano Banana Style)
+ * Upload your photo + select a garment to see how it looks on you
+ * Uses Gemini 2.0 Flash for realistic virtual try-on
+ */
+export const virtualTryOn = async (
+  personPhoto: File,
+  garmentImageUrl: string,
+  garmentName: string,
+  garmentCategory: string
+): Promise<string> => {
+  const ai = getAiClient();
+  const personBase64 = await fileToGenerativePart(personPhoto);
+
+  // Fetch garment image and convert to base64
+  let garmentBase64: string;
+  let garmentMimeType: string = 'image/jpeg';
+
+  try {
+    const response = await fetch(garmentImageUrl);
+    const blob = await response.blob();
+    garmentMimeType = blob.type || 'image/jpeg';
+
+    const reader = new FileReader();
+    garmentBase64 = await new Promise((resolve, reject) => {
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        const base64Data = base64String.split(',')[1];
+        resolve(base64Data);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error("Failed to fetch garment image:", error);
+    throw new Error("Could not load the selected garment image. Please try another item.");
+  }
+
+  const tryOnPrompt = `You are an advanced AI fashion virtual try-on system (Nano Banana). Your task is to generate a realistic image showing the person wearing the selected garment.
+
+INSTRUCTIONS:
+1. The first image is a photo of a PERSON who wants to try on clothes.
+2. The second image is the GARMENT: ${garmentName} (${garmentCategory})
+3. Generate a NEW realistic image showing the same person naturally wearing this exact garment.
+4. Preserve the person's face, body type, pose, and background.
+5. Make the garment fit naturally on the person with proper proportions.
+6. Ensure realistic lighting, shadows, and fabric draping.
+7. The output should look like a real photograph, not a collage.
+
+Generate the virtual try-on image now.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash-exp',
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              data: personBase64,
+              mimeType: personPhoto.type,
+            },
+          },
+          {
+            inlineData: {
+              data: garmentBase64,
+              mimeType: garmentMimeType,
+            },
+          },
+          {
+            text: tryOnPrompt,
+          },
+        ],
+      },
+      config: {
+        responseModalities: [Modality.TEXT, Modality.IMAGE],
+      },
+    });
+
+    // Check for image in response
+    const parts = response.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData?.data) {
+        return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+      }
+    }
+
+    throw new Error("Virtual try-on generation failed. The AI couldn't create the image. Try a different photo or garment.");
+  } catch (error: any) {
+    console.error("Virtual Try-On Error:", error);
+    throw new Error(error.message || "Virtual try-on failed. Please try again.");
+  }
+};
+
+/**
  * Feature 4: Trend Spotting
  */
 export const getFashionTrends = async (query: string) => {
