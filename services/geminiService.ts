@@ -458,7 +458,7 @@ export const editFashionImage = async (imageFile: File, editPrompt: string): Pro
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-2.5-flash',
       contents: {
         parts: [
           {
@@ -546,7 +546,7 @@ Generate the virtual try-on image now.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-2.5-flash',
       contents: {
         parts: [
           {
